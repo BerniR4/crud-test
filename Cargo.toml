@@ -1,0 +1,11 @@
+[package]
+name = "crud_test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sqlx = { version = "0.6", features = ["runtime-async-std-native-tls", "macros", "uuid", "postgres"] }
+tide = "0.16"
+async-std = { version = "1.12.0", features = ["attributes"] }
+serde = { version = "1.0.192", features = ["derive"] }
+uuid = { version = "1.5.0", features = ["v4", "serde"]}
