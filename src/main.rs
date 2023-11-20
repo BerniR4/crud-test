@@ -63,7 +63,7 @@ async fn server(book_store: PgPool) -> Server<State> {
         .post(create_book)
         .get(list_books);
 
-    app.at("/books/:name")
+    app.at("/books/:id")
         .get(get_book)
         .put(update_book)
         .delete(delete_book);
@@ -87,13 +87,17 @@ async fn create_book(mut req: Request<State>) -> tide::Result {
         .bind(book.year)
         .fetch_one(&db_pool).await?;
 
-    // let row = sqlx::query_as( 
+    // ALTERNATIVE using the macro
+    // let row = query_as!(Book,
     //     r#"
-    //     INSERT INTO book(id, name, author, year)
+    //     INSERT INTO book (id, name, author, year)
     //     VALUES ($1, $2, $3, $4)
     //     returning id, name, author, year
-    //     "#).
-    //     bind(3).bind(book.name).bind(book.author).bind(book.year)
+    //     "#,
+    //     book.id,
+    //     book.name,
+    //     book.author,
+    //     book.year)
     //     .fetch_one(&db_pool).await?;
 
     let mut res = Response::new(201);
@@ -102,13 +106,32 @@ async fn create_book(mut req: Request<State>) -> tide::Result {
 }
 
 async fn list_books(req: tide::Request<State>) -> tide::Result {
-    // TODO
-    Ok(Response::new(200))
+    let db_pool = req.state().db_pool.clone();
+    let rows = query_as::<_, Book>(
+        r#"
+        SELECT * FROM book
+        "#)
+        .fetch_all(&db_pool).await?;
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&rows)?);
+    Ok(res)
 }
 
 async fn get_book(req: tide::Request<State>) -> tide::Result {
-    // TODO
-    Ok(Response::new(200))
+    let db_pool = req.state().db_pool.clone();
+    let id: Uuid = Uuid::parse_str(req.param("id")?).unwrap();
+    let row = query_as::<_, Book>(
+        r#"
+        SELECT * FROM book
+        WHERE id = $1
+        "#)
+        .bind(id)
+        .fetch_optional(&db_pool).await?;
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&row)?);
+    Ok(res)
 }
 
 async fn update_book(req: tide::Request<State>) -> tide::Result {
