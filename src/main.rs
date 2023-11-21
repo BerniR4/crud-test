@@ -79,7 +79,7 @@ async fn create_book(mut req: Request<State>) -> tide::Result {
         r#"
         INSERT INTO book (id, name, author, year)
         VALUES ($1, $2, $3, $4)
-        returning id, name, author, year
+        RETURNING id, name, author, year
         "#)
         .bind(book.id)
         .bind(book.name)
@@ -134,14 +134,42 @@ async fn get_book(req: tide::Request<State>) -> tide::Result {
     Ok(res)
 }
 
-async fn update_book(req: tide::Request<State>) -> tide::Result {
-    // TODO
-    Ok(Response::new(200))
+async fn update_book(mut req: tide::Request<State>) -> tide::Result {
+    let book: Book = req.body_json().await?;
+    let db_pool = req.state().db_pool.clone();
+    let id: Uuid = Uuid::parse_str(req.param("id")?).unwrap();
+    let row = query_as::<_, Book>(
+        r#"
+        UPDATE book
+        SET name = $2, author = $3, year = $4
+        WHERE id = $1
+        RETURNING id, name, author, year
+        "#)
+        .bind(id)
+        .bind(book.name)
+        .bind(book.author)
+        .bind(book.year)
+        .fetch_optional(&db_pool).await?;
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&row)?);
+    Ok(res)
 }
 
 async fn delete_book(req: tide::Request<State>) -> tide::Result {
-    // TODO
-    Ok(Response::new(200))
+    let db_pool = req.state().db_pool.clone();
+    let id: Uuid = Uuid::parse_str(req.param("id")?).unwrap();
+    let row = query_as::<_, Book>(
+        r#"
+        DELETE FROM book
+        WHERE id = $1
+        "#)
+        .bind(id)
+        .fetch_optional(&db_pool).await?;
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&row)?);
+    Ok(res)
 }
 
 // #[async_std::test]
