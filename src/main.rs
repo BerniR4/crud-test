@@ -1,8 +1,8 @@
-use std::{env, ptr::NonNull};
+use std::env;
 
 use uuid::Uuid;
 
-use sqlx::{Connection, Row, PgPool, Pool, query_as};
+use sqlx::{PgPool, Pool, query_as};
 use serde::{Deserialize, Serialize};
 use tide::{Body, Request, Response, Server};
 
@@ -27,21 +27,6 @@ async fn main() -> Result<(), std::io::Error>{
     let app = server(db_pool).await;
 
     app.listen("127.0.0.1:8080").await.unwrap();
-
-    // let dbuser = env::var("PGUSER").unwrap_or("postgres".to_string());
-    // let dbpwd = env::var("PGPWD").unwrap_or("postgres".to_string());
-    // let dbhost = env::var("PGHOST").unwrap_or("localhost:5432".to_string());
-    // let dbschema = env::var("PGSCHEMA").unwrap_or("a".to_string());
-
-    // let url = format!("postgres://{}:{}@{}/{}", dbuser, dbpwd, dbhost, dbschema);
-    // let mut conn = sqlx::postgres::PgConnection::connect(&url).await?;
-
-    // let res = sqlx::query("SELECT 1+1 as sum")
-    //     .fetch_one(&mut conn)
-    //     .await?;
-
-    // let sum: i32 = res.get("sum");
-    // println!("1 + 1 = {}", sum);
 
     Ok(())
 }
@@ -129,8 +114,14 @@ async fn get_book(req: tide::Request<State>) -> tide::Result {
         .bind(id)
         .fetch_optional(&db_pool).await?;
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&row)?);
+    let res = match row {
+        Some(_) => {
+            let mut r = Response::new(200);
+            r.set_body(Body::from_json(&row)?);
+            r
+        },
+        None => Response::new(404),
+    };
     Ok(res)
 }
 
@@ -151,9 +142,14 @@ async fn update_book(mut req: tide::Request<State>) -> tide::Result {
         .bind(book.year)
         .fetch_optional(&db_pool).await?;
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&row)?);
-    Ok(res)
+    let res = match row {
+        Some(_) => {
+            let mut r = Response::new(200);
+            r.set_body(Body::from_json(&row)?);
+            r
+        },
+        None => Response::new(404),
+    };    Ok(res)
 }
 
 async fn delete_book(req: tide::Request<State>) -> tide::Result {
@@ -167,8 +163,10 @@ async fn delete_book(req: tide::Request<State>) -> tide::Result {
         .bind(id)
         .fetch_optional(&db_pool).await?;
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&row)?);
+    let res = match row {
+        Some(_) => Response::new(204),
+        None => Response::new(404),
+    };
     Ok(res)
 }
 
