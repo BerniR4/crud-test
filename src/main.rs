@@ -170,15 +170,47 @@ async fn delete_book(req: tide::Request<State>) -> tide::Result {
     Ok(res)
 }
 
+#[async_std::test]
+async fn book_creation() -> tide::Result<()> {
+    use tide::http::{Method, Request, Response, Url};
+
+    let book = Book {
+        id: Uuid::new_v4(),
+        name: Some(String::from("The Rust Programming Language")),
+        author: Some(String::from("Steve Klabnik, Carol Nichols")),
+        year: Some(2018)
+    };
+
+     let db_pool = make_db_pool().await;
+     let app = server(db_pool).await;
+
+     let url = Url::parse("http://localhost:8080/books").unwrap();
+     let mut req = Request::new(Method::Post, url);
+     req.set_body(serde_json::to_string(&book)?);
+     let res: Response = app.respond(req).await?;
+     assert_eq!(201, res.status());
+     Ok(())
+}
+
 // #[async_std::test]
-// async fn list_books() -> tide::Result<()> {
+// async fn create_dino() -> tide::Result<()> {
+//     dotenv::dotenv().ok();
 //     use tide::http::{Method, Request, Response, Url};
 
-//     let book = Book {
-//         name: String::from("The Rust Programming Language"),
-//         author: String::from("Steve Klabnik, Carol Nichols"),
-//         year: 2018
+//     let dino = Dino {
+//         id: Uuid::new_v4(),
+//         name: String::from("test"),
+//         weight: 50,
+//         diet: String::from("carnivorous"),
 //     };
 
-//      let mut book_store =
+//     let db_pool = make_db_pool().await;
+//     let app = server(db_pool).await;
+
+//     let url = Url::parse("https://example.com/dinos").unwrap();
+//     let mut req = Request::new(Method::Post, url);
+//     req.set_body(serde_json::to_string(&dino)?);
+//     let res: Response = app.respond(req).await?;
+//     assert_eq!(201, res.status());
+//     Ok(())
 // }
